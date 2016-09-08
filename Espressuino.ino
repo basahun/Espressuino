@@ -1,4 +1,9 @@
+/*
 
+Arduino based Espresso Controller version V16.1
+Last change date: 08/SEP/2016
+
+*/
 
 #include <LiquidCrystal.h>
 #include <PID_v1.h>
@@ -88,9 +93,9 @@ void setup() {
   Mode = 1;
 
   lcd.setCursor(0, 0);
-  lcd.print("CoffeeMaker 1.6 ");
+  lcd.print("Espressuino v16.1 ");
   lcd.setCursor(0, 1);
-  lcd.print("Kersz egy kavet?");
+  lcd.print("want coffee?");
   delay(1000);
   lcd.clear();
 
@@ -266,15 +271,15 @@ void loop() {
   lcd.print("C ");
   lcd.setCursor(0, 1);
   switch ( Mode ) {
-    case 1: lcd.print("Kave");
+    case 1: lcd.print("Coffee");
       break;
-    case 2: lcd.print("Oblites");
+    case 2: lcd.print("Flush");
       break;
-    case 3: lcd.print("Goz    ");
+    case 3: lcd.print("Steam    ");
       break;
-    case 4: lcd.print("Kave Hom: "); lcd.print(brew_temperature); lcd.print(" ");
+    case 4: lcd.print("Brewtemp: "); lcd.print(brew_temperature); lcd.print(" ");
       break;
-    case 5: lcd.print("Goz Hom: "); lcd.print(steam_temperature); lcd.print(" ");
+    case 5: lcd.print("Steamtemp: "); lcd.print(steam_temperature); lcd.print(" ");
       break;
     case 6: lcd.print("                ");
       EEPROM.write(0, brew_temperature);
