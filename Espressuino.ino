@@ -1,18 +1,18 @@
 #include <LiquidCrystal.h>
 #include <PID_v1.h>
-#include "max6675.h"
+#include <max6675.h>
 #define RelayPin 11
 #include <EEPROM.h>
 
 int brew_time = 27;
-int brew_temperature = 100;
-int steam_temperature = 138;
-int flush_temperature = 95;
+int brew_temperature = 91;
+int steam_temperature = 135;
+int flush_temperature = 91;
 
 bool pump_started;
 bool HeatPhase;
 bool Pause;
-bool Coffee_Mode,Steam_Mode,Flush_Mode;
+bool Coffee_Mode,Steam_Mode,Flush_Mode,Temp1_Mode,Temp2_Mode;
 bool Menu_Button,Action_Button;
 
 int thermoDO = 8;
@@ -37,6 +37,9 @@ byte InputF;
 byte Mode;
 
 void setup() {
+  if( EEPROM.read(0) > 80 && EEPROM.read(0) < 110 ) { brew_temperature = EEPROM.read(0); }
+  if( EEPROM.read(1) > 110 && EEPROM.read(1) < 150 ) { steam_temperature = EEPROM.read(1); }
+  
   myPID.SetOutputLimits(0, 1000);
   myPID.SetMode(AUTOMATIC);
   Serial.begin(9600);
@@ -49,10 +52,10 @@ void setup() {
   HeatPhase = false;
 
   lcd.setCursor(0,0);
-  lcd.print("CoffeeMaker 1.1 ");
+  lcd.print("CoffeeMaker 1.3 ");
   lcd.setCursor(0,1);
   lcd.print("Kersz egy kavet?");
-  delay(5000);
+  delay(1000);
   lcd.clear();
   
 }
@@ -65,6 +68,7 @@ void loop() {
   Coffee_Mode = false;
   Steam_Mode = false;
   Flush_Mode = false;
+  Temp1_Mode = false;
 
    
   switch( Mode ) {
@@ -80,6 +84,17 @@ void loop() {
       Steam_Mode = true;
       Setpoint = steam_temperature;
     break;
+    case 4:
+      Temp1_Mode = true;
+      Setpoint = brew_temperature;
+    break;
+    case 5:
+      Temp2_Mode = true;
+      Setpoint = steam_temperature;
+    break;
+  
+      
+      
   }
     
   if(TemperatureTime < millis() - 500 ) {
@@ -123,7 +138,7 @@ void loop() {
      
   myPID.Compute();
 
-  if( Output > 500 && ! HeatPhase && ! Pause ) {
+  if( Output > 100 && ! HeatPhase && ! Pause ) {
       PhaseTime = millis();
       digitalWrite(RelayPin,HIGH);
       HeatLength = Output;
@@ -166,13 +181,13 @@ void loop() {
     Serial.println("NO PUMP");
     delay(3000);
     lcd.clear();
-    Mode = 2;
+  
     
   }
 
   if( Menu_Button && ! pump_started ) {
     Mode = Mode + 1;
-    if( Mode > 3 ) { Mode = 1; }
+    if( Mode > 6 ) { Mode = 1; }
     delay(300);
   }
   
@@ -188,6 +203,18 @@ void loop() {
     lcd.setCursor(6,1);
     lcd.print("        ");
 
+  }
+
+  if( Action_Button && Temp1_Mode ) {
+    brew_temperature = brew_temperature + 1;
+    if( brew_temperature > 104 ) { brew_temperature = 85; }
+    delay(250);
+  }
+
+  if( Action_Button && Temp2_Mode ) {
+    steam_temperature = steam_temperature + 1;
+    if( steam_temperature > 140 ) { steam_temperature = 120; }
+    delay(250);
   }
 
   if( Action_Button && Flush_Mode ) {
@@ -214,11 +241,21 @@ void loop() {
   lcd.print("C ");
   lcd.setCursor(0, 1);
   switch ( Mode ) {
-    case 1: lcd.print("Kave   ");
+    case 1: lcd.print("Kave");
     break;
     case 2: lcd.print("Oblites");
     break;
     case 3: lcd.print("Goz    ");
+    break;
+    case 4: lcd.print("Kave Hom: ");lcd.print(brew_temperature);lcd.print(" ");
+    break;
+    case 5: lcd.print("Goz Hom: ");lcd.print(steam_temperature);lcd.print(" ");
+    break;
+    case 6: lcd.print("                ");
+      EEPROM.write(0,brew_temperature);
+      EEPROM.write(1,steam_temperature);
+      Mode=1;
+    break;
   }
   lcd.setCursor(15,1);
   if(Output > 0 ) { Serial.println(Output);}
