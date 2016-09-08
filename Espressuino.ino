@@ -5,8 +5,9 @@
 #include <EEPROM.h>
 
 int brew_time = 27;
-int brew_temperature = 110;
+int brew_temperature = 100;
 int steam_temperature = 138;
+int flush_temperature = 95;
 
 bool pump_started;
 bool HeatPhase;
@@ -25,8 +26,8 @@ MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 
 double Setpoint, Output, Input;
-PID myPID(&Input, &Output, &Setpoint,200,2,50, DIRECT);
-int WindowSize = 3500;
+PID myPID(&Input, &Output, &Setpoint,200,20,2, DIRECT);
+int WindowSize = 1500;
 unsigned long TemperatureTime;
 unsigned long PhaseTime;
 unsigned long PumpStartTime;
@@ -36,7 +37,7 @@ byte InputF;
 byte Mode;
 
 void setup() {
-  myPID.SetOutputLimits(0, 3000);
+  myPID.SetOutputLimits(0, 1000);
   myPID.SetMode(AUTOMATIC);
   Serial.begin(9600);
 //  mySerial.begin(9600);
@@ -48,7 +49,7 @@ void setup() {
   HeatPhase = false;
 
   lcd.setCursor(0,0);
-  lcd.print("  Jo reggelt !  ");
+  lcd.print("CoffeeMaker 1.1 ");
   lcd.setCursor(0,1);
   lcd.print("Kersz egy kavet?");
   delay(5000);
@@ -73,7 +74,7 @@ void loop() {
     break;
     case 2:
       Flush_Mode = true;
-      Setpoint = 90;
+      Setpoint = flush_temperature;
     break;
     case 3:
       Steam_Mode = true;
@@ -98,9 +99,9 @@ void loop() {
     Serial.print("1");   
     Serial.print(" ");
     Serial.println("Automatic");
-    Serial.println(analogRead(0));
-    Serial.println(analogRead(1));
-    
+//    Serial.println(analogRead(0));
+//    Serial.println(analogRead(1));
+        
 //    mySerial.print("PID ");
 //    mySerial.print(Setpoint);   
 //    mySerial.print(" ");
@@ -122,7 +123,7 @@ void loop() {
      
   myPID.Compute();
 
-  if( Output > 0 && ! HeatPhase && ! Pause ) {
+  if( Output > 500 && ! HeatPhase && ! Pause ) {
       PhaseTime = millis();
       digitalWrite(RelayPin,HIGH);
       HeatLength = Output;
@@ -191,17 +192,17 @@ void loop() {
 
   if( Action_Button && Flush_Mode ) {
     digitalWrite(PumpPIN,HIGH);
-    delay(1500);
+    delay(2000);
     digitalWrite(PumpPIN,LOW);
     delay(1000);
     digitalWrite(PumpPIN,HIGH);
-    delay(1500);
+    delay(2000);
     digitalWrite(PumpPIN,LOW);
     delay(1000);
     digitalWrite(PumpPIN,HIGH);
-    delay(1500);
+    delay(2000);
     digitalWrite(PumpPIN,LOW);
-    Mode = 3;
+    Mode = 2;
   }
   lcd.setCursor(0, 0);
   lcd.print("Homero:");
@@ -220,5 +221,5 @@ void loop() {
     case 3: lcd.print("Goz    ");
   }
   lcd.setCursor(15,1);
-  
+  if(Output > 0 ) { Serial.println(Output);}
 }
