@@ -1,11 +1,34 @@
+
+
 #include <LiquidCrystal.h>
 #include <PID_v1.h>
-#include <max6675.h>
-#define RelayPin 11
 #include <EEPROM.h>
-#include <Gaggia.h>
+#include <Gaggia_v2.h>
 
-int brew_time = 27;
+#define PRE_BREW_CYCLES 3
+#define PRE_BREW_CYCLE_DURATION 200
+#define PRE_BREW_DURATION 3
+
+#define PUMPPIN 12
+#define HEATPIN 11
+#define THERMOCLK 10
+#define THERMOCS 9
+#define THERMODO 8
+#define THERMWINDOWSIZE 500
+
+LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
+Gaggia Gaggia(PUMPPIN, HEATPIN, THERMWINDOWSIZE);
+
+
+void setup() {
+  
+}
+
+void loop() {
+  
+}
+
+/*int brew_time = 27;
 int brew_temperature = 91;
 int steam_temperature = 135;
 int flush_temperature = 91;
@@ -27,9 +50,9 @@ int PumpPIN = 12;
 int WindowSize = 500;
 
 bool pre_brew_finished;
-int pre_brew_cycles = 6;
+int pre_brew_cycles = 3;
 int pre_brew_cycle_duration = 200;
-int pre_brew_duration = 6;
+int pre_brew_duration = 3;
 
 MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);
 Gaggia Gaggia(PumpPIN, RelayPin, WindowSize);
@@ -37,7 +60,7 @@ Gaggia Gaggia(PumpPIN, RelayPin, WindowSize);
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 
 double Setpoint, Output, Input;
-PID myPID(&Input, &Output, &Setpoint, 40, 2, 20, DIRECT);
+PID myPID(&Input, &Output, &Setpoint, 100, 10, 2, DIRECT);
 
 unsigned long TemperatureTime;
 unsigned long PhaseTime;
@@ -48,13 +71,13 @@ byte InputF;
 byte Mode;
 
 void setup() {
-/*  if ( EEPROM.read(0) > 80 && EEPROM.read(0) < 110 ) {
+  if ( EEPROM.read(0) > 80 && EEPROM.read(0) < 110 ) {
     brew_temperature = EEPROM.read(0);
   }
   if ( EEPROM.read(1) > 110 && EEPROM.read(1) < 150 ) {
     steam_temperature = EEPROM.read(1);
   }
-*/
+
   myPID.SetOutputLimits(0, WindowSize);
   myPID.SetMode(AUTOMATIC);
   //  mySerial.begin(9600);
@@ -73,12 +96,11 @@ void setup() {
 
   pre_brew_finished = false;
   state = 0;
-  Serial.begin(9600);
 }
 
 
 void loop() {
-  
+
   Action_Button = analogRead(0) > 800;
   Menu_Button = analogRead(1) > 800;
 
@@ -117,11 +139,7 @@ void loop() {
   if (TemperatureTime < millis() - 250 ) {
     Input = thermocouple.readCelsius();
     InputF = Input;
-  Serial.print(Input);
-  Serial.print("\t");
-  Serial.print(50*Output/WindowSize);
-  Serial.print("\t");
-  Serial.println(Setpoint);
+
     TemperatureTime = millis();
   }
 
@@ -266,3 +284,4 @@ void loop() {
   }
   lcd.setCursor(15, 1);
 }
+*/
