@@ -16,6 +16,8 @@ bool Pause;
 bool Coffee_Mode, Steam_Mode, Flush_Mode, Temp1_Mode, Temp2_Mode;
 bool Menu_Button, Action_Button;
 
+int state;
+
 int thermoDO = 8;
 int thermoCS = 9;
 int thermoCLK = 10;
@@ -24,13 +26,18 @@ int PumpPIN = 12;
 
 int WindowSize = 500;
 
+bool pre_brew_finished;
+int pre_brew_cycles = 6;
+int pre_brew_cycle_duration = 200;
+int pre_brew_duration = 6;
+
 MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);
 Gaggia Gaggia(PumpPIN, RelayPin, WindowSize);
 
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 
 double Setpoint, Output, Input;
-PID myPID(&Input, &Output, &Setpoint, 100, 10, 2, DIRECT);
+PID myPID(&Input, &Output, &Setpoint, 40, 2, 20, DIRECT);
 
 unsigned long TemperatureTime;
 unsigned long PhaseTime;
@@ -41,16 +48,15 @@ byte InputF;
 byte Mode;
 
 void setup() {
-  if ( EEPROM.read(0) > 80 && EEPROM.read(0) < 110 ) {
+/*  if ( EEPROM.read(0) > 80 && EEPROM.read(0) < 110 ) {
     brew_temperature = EEPROM.read(0);
   }
   if ( EEPROM.read(1) > 110 && EEPROM.read(1) < 150 ) {
     steam_temperature = EEPROM.read(1);
   }
-
+*/
   myPID.SetOutputLimits(0, WindowSize);
   myPID.SetMode(AUTOMATIC);
-  Serial.begin(9600);
   //  mySerial.begin(9600);
   pinMode(PumpPIN, OUTPUT); digitalWrite(PumpPIN, LOW);
   pinMode(RelayPin, OUTPUT);
@@ -59,17 +65,20 @@ void setup() {
   Mode = 1;
 
   lcd.setCursor(0, 0);
-  lcd.print("CoffeeMaker 1.5 ");
+  lcd.print("CoffeeMaker 1.6 ");
   lcd.setCursor(0, 1);
   lcd.print("Kersz egy kavet?");
   delay(1000);
   lcd.clear();
 
+  pre_brew_finished = false;
+  state = 0;
+  Serial.begin(9600);
 }
 
 
 void loop() {
-
+  
   Action_Button = analogRead(0) > 800;
   Menu_Button = analogRead(1) > 800;
 
@@ -108,9 +117,11 @@ void loop() {
   if (TemperatureTime < millis() - 250 ) {
     Input = thermocouple.readCelsius();
     InputF = Input;
-    Serial.print(Input);
-    Serial.print("\t");
-    Serial.println(Output);
+  Serial.print(Input);
+  Serial.print("\t");
+  Serial.print(50*Output/WindowSize);
+  Serial.print("\t");
+  Serial.println(Setpoint);
     TemperatureTime = millis();
   }
 
@@ -119,28 +130,56 @@ void loop() {
   delay(10);
   Gaggia.Control(Output, brew_time);
 
-  if ( Action_Button && ! pump_started && Coffee_Mode ) {
+  if ( state == 2 && ! pump_started && Coffee_Mode ) {
     pump_started = true;
     PumpStartTime = millis();
     digitalWrite(PumpPIN, HIGH);
+    state = 3;
 
   }
 
-  if ( pump_started && Coffee_Mode  ) {
+  if ( Action_Button && Coffee_Mode && state == 0 ) {
+    pump_started = true;
+    PumpStartTime = millis();
+    lcd.setCursor(4,1);
+    lcd.print("[ Eloaztatas ]");
+    for( int x = 1; x<= pre_brew_cycles; x++ ) {
+      digitalWrite(PumpPIN, HIGH);
+      delay(pre_brew_cycle_duration);
+
+      digitalWrite(PumpPIN, LOW);
+      delay(pre_brew_cycle_duration);
+    }
+  state = 1;
+  }
+
+  if ( pump_started && Coffee_Mode && state == 1 ) {
+    if( millis() > PumpStartTime + 1000 * pre_brew_duration ) {
+      lcd.setCursor(4,1);
+      lcd.print("               ");
+      pre_brew_finished = true;
+      state = 2;
+      pump_started = false;
+    }
+  }
+
+  if ( pump_started && Coffee_Mode && state == 3  ) {
     lcd.setCursor(4, 1);
     lcd.print("[");
-    for (int x = 1; x < (round(millis() - PumpStartTime) / (brew_time * 100)) + 1; x++) {
+    for (int x = 1; x < (round(millis() - PumpStartTime) / ((brew_time - pre_brew_duration )* 100)) + 1; x++) {
       lcd.print((char)255);
     }
     lcd.setCursor(15, 1);
     lcd.print("]");
 
   }
-  if ( millis() > PumpStartTime + brew_time * 1000 && pump_started && Coffee_Mode ) {
+  if ( millis() > PumpStartTime + (brew_time - pre_brew_duration) * 1000 && pump_started && Coffee_Mode && state == 3 ) {
     pump_started = false;
+    pre_brew_finished = false;
     digitalWrite(PumpPIN, LOW);
-    Serial.println("NO PUMP");
+    
     delay(3000);
+    state = 0;
     lcd.clear();
 
 
@@ -154,8 +193,9 @@ void loop() {
     delay(300);
   }
 
-  if ( Action_Button && Coffee_Mode && pump_started && millis() - PumpStartTime > 500) {
+  if ( Action_Button && Coffee_Mode && pump_started && millis() - PumpStartTime > 500 && state == 3) {
     pump_started = false;
+    pre_brew_finished = false;
     digitalWrite(PumpPIN, LOW);
 
     lcd.setCursor(6, 1);
@@ -165,7 +205,7 @@ void loop() {
     lcd.clear();
     lcd.setCursor(6, 1);
     lcd.print("        ");
-
+    state = 0;
   }
 
   if ( Action_Button && Temp1_Mode ) {
